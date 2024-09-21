@@ -24,15 +24,17 @@ time.sleep(1)
 
 
 
-####--- Function Definitions ---###
+####--- Function and Parameter Definitions ---###
+
+
 
 def connect_to_wifi():
     '''Function that encapsulates instructions to connect to wifi. Returns False if the connection
     was not succesful and True if it was'''
 
     # Define the wifi parameters and a wlan object
-    ssid = 'GONZALEZ_2.4G'
-    password = 'Ufx970max405'
+    ssid = 'PROYDINAMICA'
+    password = 'qwerty123'
     wlan = network.WLAN(network.STA_IF)
     wlan.active(True)
     # Connect to wifi
@@ -59,11 +61,17 @@ def connect_to_wifi():
             print("Failed to connect to Wi-Fi")
             return False
         
-# Instructions to read the sensor values
-# It only reads for 6s because movement is not expected beyond that
+## Instructions to read the sensor values
+# It only reads for 9s because movement is not expected beyond that
+
+# Configure the ADC pins for the sensors
+sv03 = ADC(Pin(26)) #GPIO26, physical pin 31
+sharp = ADC(Pin(27)) #GPIO26, physical pin 32
+sv03_vmax = 3.3 # Volts
+
 def read_sensor():
     start_time = time.ticks_ms() #Time when we start measuring
-    reading_duration = 6000 # Time to read in ms
+    reading_duration = 9000 # Time to read in ms
     with open('sensor_readings.json', 'a') as file:
         while True:
             current_time = time.ticks_ms()
@@ -72,9 +80,28 @@ def read_sensor():
             #Turn the LED On to indicate that the pico is measuring
             led.on()
 
+            # Read the ADC value
+            sv03_value = sv03.read_u16()
+            sharp_value = sharp.read_u16()
+
+            # Convert the value to a voltage (0 to 3.3V)
+            sv03_voltage = (sv03_value / 65535) * 3.3
+            sharp_voltage = (sharp_value / 65535) * 3.3
+
+            # Print the voltage
+            #print(sv03_voltage)
+            #print(sharp_voltage)
+
+            # Calculate angle and distance values
+            sv03_angle = ((sv03_voltage/sv03_vmax) * 333.3) #-160 # 160° es el ángulo max
+            sharp_distance = 29.988 * (sharp_voltage**1.173)
+            print(sv03_angle)
+            print(sharp_distance)
+
             # Create a value pair of reading and timestamp
             reading_data = {
-                'reading': accx,  # Replace with actual sensor reading
+                'angle_reading': sv03_angle,  # Replace with actual sensor reading
+                'distance_reading': sharp_distance,
                 'time': elapsed_time
             }
             #Add reading to file line by line
@@ -88,6 +115,49 @@ def read_sensor():
                 led.off()
                 break
         
+
+def clear_file(filename):
+    '''Function to empty the JSON file and avoid appending data to the old reading'''
+    with open(filename, 'w') as file:
+        pass  # Opening in 'w' mode and writing nothing will clear the file
+
+
+def send_file_in_chunks(filename, url):
+    '''Function to send the file to the server. It breaks the data down
+    into a stream of bytes, because the Pi Pico has limited RAM and thus
+    cannot open the full readings file in RAM to send it to the server'''
+
+    headers = {'Content-Type': 'application/json'}
+
+    # Function to generate file data in chunks (to avoid hogging RAM)
+    def generate_file_data():
+        with open(filename, 'rb') as f:
+            while True:
+                chunk = f.read(1024)  # 1kB seems to work well in wifi LAN
+                if not chunk:
+                    break
+                yield chunk
+
+    # Post the data to the server
+    response = urequests.post(url, data=generate_file_data(), headers=headers)
+    # Delete the data from the pico if the server received it succesfully
+    if response.text == 'JSON file received successfully':
+        clear_file('sensor_readings.json')
+    print(response.text)
+    response.close()
+
+
+# Set parameters to send data over the web
+server_ip = 'http://192.168.0.8'
+port = '5000'
+url = 'http://192.168.0.8/upload_json'
+
+
+# Create file for the readings if it doesn't exist
+filename = 'sensor_readings.json'
+with open(filename, 'a') as file:
+        pass
+
 
 
 ####---- MAIN LOOP ----####
