@@ -4,6 +4,10 @@ from flask import Flask, request, render_template, jsonify
 import json
 import os
 
+# Import data handling libraries
+import pandas as pd
+from openpyxl import Workbook
+
 
 # Matplotlib handles data visualization
 import matplotlib
@@ -25,6 +29,27 @@ from scipy.signal import savgol_filter
 
 app = Flask(__name__)
 start_signal = False
+
+def export_to_excel(t, r, r_dot, r_ddot, theta, theta_dot, theta_ddot):
+'''Function to export the variables to an Excel file'''
+data = {
+    'Time (s)': t,
+    'r (Distance)': r,
+    'r_dot (Velocity)': r_dot,
+    'r_ddot (Acceleration)': r_ddot,
+    'theta (Angle)': theta,
+    'theta_dot (Angular Velocity)': theta_dot,
+    'theta_ddot (Angular Acceleration)': theta_ddot
+}
+
+# Create a pandas DataFrame
+df = pd.DataFrame(data)
+
+# Save DataFrame to Excel file
+excel_filename = 'static/sensor_data.xlsx'  # Path where the Excel file will be saved
+df.to_excel(excel_filename, index=False)
+print(f"Data exported to {excel_filename}")
+
 
 def generate_plot():
     '''Function to generate the plot and save it as an image to the server folder'''
@@ -94,6 +119,9 @@ def generate_plot():
     # Angular velocity (dθ/dt) and angular acceleration (d²θ/dt²)
     theta_dot = np.gradient(theta, dt)  # Angular velocity
     theta_ddot = np.gradient(theta_dot, dt)  # Angular acceleration
+
+    # Export data to Excel
+    export_to_excel(t, r, r_dot, r_ddot, theta, theta_dot, theta_ddot)
 
     # --- Plot the results ---
     
