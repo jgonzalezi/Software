@@ -5,7 +5,7 @@ import network, time
 import urequests, ujson
 
 # These libraries handle GPIO functions in general
-from machine import Pin
+from machine import Pin, ADC
 
 
 
@@ -66,8 +66,8 @@ def connect_to_wifi():
 
 # Configure the ADC pins for the sensors
 sv03 = ADC(Pin(26)) #GPIO26, physical pin 31
-sharp = ADC(Pin(27)) #GPIO26, physical pin 32
-sv03_vmax = 3.3 # Volts
+sharp = ADC(Pin(28)) #GPIO28, physical pin 34
+sv03_vmax = 3.3
 
 def read_sensor():
     start_time = time.ticks_ms() #Time when we start measuring
@@ -85,23 +85,27 @@ def read_sensor():
             sharp_value = sharp.read_u16()
 
             # Convert the value to a voltage (0 to 3.3V)
-            sv03_voltage = (sv03_value / 65535) * 3.3
-            sharp_voltage = (sharp_value / 65535) * 3.3
-
+            sv03_voltage = (sv03_value / 65535) * sv03_vmax
+            sharp_voltage = (sharp_value / 65535) * 5
+            if sharp_voltage == 0:
+                continue
+            
             # Print the voltage
             #print(sv03_voltage)
-            #print(sharp_voltage)
+            print(sharp_voltage)
 
             # Calculate angle and distance values
-            sv03_angle = ((sv03_voltage/sv03_vmax) * 333.3) #-160 # 160° es el ángulo max
-            sharp_distance = 29.988 * (sharp_voltage**1.173)
-            print(sv03_angle)
-            print(sharp_distance)
+            #sv03_angle = ((sv03_voltage/sv03_vmax) * 333.3) #-160 # 160° es el ángulo max
+            #C = 1.19
+            #k = 20.1
+            #sharp_distance = k * (sharp_voltage**(-C))
+            #print(sv03_angle)
+            #print(sharp_distance)
 
             # Create a value pair of reading and timestamp
             reading_data = {
-                'angle_reading': sv03_angle,  # Replace with actual sensor reading
-                'distance_reading': sharp_distance,
+                'angle_reading': sv03_voltage,  #Replace with actual sensor reading variable
+                'distance_reading': sharp_voltage,
                 'time': elapsed_time
             }
             #Add reading to file line by line
@@ -148,9 +152,9 @@ def send_file_in_chunks(filename, url):
 
 
 # Set parameters to send data over the web
-server_ip = 'http://192.168.0.8'
-port = '5000'
-url = 'http://192.168.0.8/upload_json'
+server_ip = 'http://192.168.122.170'
+port = ':5000'
+upload_url = server_ip + port + '/upload_json'
 
 
 # Create file for the readings if it doesn't exist
@@ -172,11 +176,11 @@ while True:
 while True:
         '''Main Loop'''
         # Check for the start signal
-        response = urequests.get('http://192.168.0.8:5000/check_start_signal')
+        response = urequests.get(server_ip + port + '/check_start_signal')
         
         # If the server returns the response, we invoke the reading and data send functions
         if response.json().get('start'):
             read_sensor()
-            send_file_in_chunks('sensor_readings.json', 'http://192.168.0.8:5000/upload_json')
+            send_file_in_chunks('sensor_readings.json', upload_url)
         
         time.sleep(1)  # Polling interval (can be adjusted, 1s seems to work well)

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- title>Sensor Data</title -->
+</head>
+<body>
+    <h1>Taller: Análisis de un mecanismo instrumentado</h1>
+    <p>
+        Para iniciar la medición, haga clic en el botón. Espere a que el LED se apague antes de intentar una nueva medición.
+        Puede guardar o copiar la imagen, esta se actualizará automáticamente una vez haya una medición nueva.
+        Asegúrese de que el proceso de inicio del sistema se haya completado con éxito.
+    </p>
+    <!-- Button to clear data on the server -->
+    <button onclick="clearServerData()">Limpiar datos</button>
+    <script>
+        function clearServerData() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/clear_data', true);
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    alert("Data cleared succesfully!");
+                }
+            };
+            xhr.send();
+        }
+    </script>
+
+    <!-- Button to start reading -->
+    <button onclick="startSensorReading()">Iniciar medición</button>
+    <script>
+        function startSensorReading() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/start_reading', true);
+            xhr.send();
+        }
+    </script>
+
+    <!-- Image element to display the plot -->
+    <img id="sensorPlot" src="{{ url_for('static', filename='plot.png') }}" alt="Sensor Plot">
+
+    <!-- Readings will be added here by JinJa2 --> 
+    <!--table>
+        <tr>
+            <th>Timestamp (s)</th>
+            <th>Reading</th>
+        </tr>
+        {% for time, reading in readings_times %}
+        <tr>
+            <td>{{ time }}</td>
+            <td>{{ reading }}</td>
+        </tr>
+        {% endfor %}
+    </table-->
+    <!-- JavaScript to refresh the plot -->
+    <script>
+        function refreshPlot() {
+            var plotElement = document.getElementById('sensorPlot');
+            plotElement.src = "{{ url_for('static', filename='plot.png') }}?" + new Date().getTime();
+        }
+        setInterval(refreshPlot, 2000); // Refresh every 5 seconds
+    </script>
+
+</body>
+</html>

@@ -23,7 +23,7 @@ app = Flask(__name__)
 
 
 
-# Global variable to store the 'start reding' signal
+# Global variable to store the 'start reading' signal
 start_signal = False
 
 def generate_plot():
