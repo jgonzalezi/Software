@@ -5,7 +5,7 @@ import time
 
 sv03 = ADC(Pin(26)) #GPIO26, physical pin 31
 #sharp = ADC(Pin(27)) #GPIO27, physical pin 32
-sharp = ADC(Pin(28)) #GPIO28, physical pin 34
+sharp = ADC(Pin(27)) #GPIO28, physical pin 34
 sv03_vmax = 3.3 # Volts
 
 

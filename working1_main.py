@@ -1,4 +1,3 @@
-'''Main function for the raspberry pi pico that reads and sends data'''
 # Import libraries for wifi connection
 import network, time
 
@@ -27,68 +26,6 @@ time.sleep(1)
 
 ####--- Function and Parameter Definitions ---###
 
-# L298 motor driver parameters and functions
-
-l298_in1 = Pin(11, Pin.OUT) 
-l298_in2 = Pin(12, Pin.OUT)
-l298_enA = Pin(10, Pin.OUT)
-
-def motor_forward():
-    l298_in1.on() 
-    l298_in2.off()
-    l298_enA.on()
-
-def motor_backward():
-    l298_in1.off()
-    l298_in2.on()
-    l298_enA.on()
-
-def motor_stop():
-    l298_enA.off()
-
-# Calibration method
-start_button = Pin(14, Pin.IN, Pin.PULL_UP)  # GPIO14
-end_button = Pin(15, Pin.IN, Pin.PULL_UP)    # GPIO15
-start_angle = None
-end_angle = None
-
-def capture_start_angle():
-    global start_angle
-    led.on()
-    while True:
-        if not start_button.value():
-            time.sleep(0.05)
-            start_angle = sv03.read_u16()
-            led.off()
-            break
-        
-
-def capture_end_angle():
-    global end_angle
-    led.off()
-    while True:
-        if not end_button.value():
-            motor_stop()
-            led.on()
-            time.sleep(0.3)
-            end_angle = sv03.read_u16()
-            time.sleep(0.3)
-            led.off()
-            break
-
-
-# Función para regresar al ángulo inicial
-def return_to_start():
-    global start_angle
-    print(f"Moviendo motor hacia el ángulo inicial: {start_angle}")
-    motor_backward()
-    while True:
-        current_angle = sv03.read_u16()
-        if current_angle <= start_angle:
-            motor_stop()
-            print("Motor detenido en ángulo inicial.")
-            break
-        time.sleep(0.01)
 
 
 def connect_to_wifi():
@@ -129,14 +66,13 @@ def connect_to_wifi():
 
 # Configure the ADC pins for the sensors
 sv03 = ADC(Pin(26)) #GPIO26, physical pin 31
-sharp = ADC(Pin(27)) #GPIO28, physical pin 34
+sharp = ADC(Pin(28)) #GPIO28, physical pin 34
 sv03_vmax = 3.3
 
 def read_sensor():
     start_time = time.ticks_ms() #Time when we start measuring
     reading_duration = 9000 # Time to read in ms
     with open('sensor_readings.json', 'a') as file:
-        motor_forward()
         while True:
             current_time = time.ticks_ms()
             elapsed_time = (current_time - start_time) / 1000 # Convert to seconds, it's better for the timestamps
@@ -174,13 +110,12 @@ def read_sensor():
             }
             #Add reading to file line by line
             file.write(ujson.dumps(reading_data) + '\n')
-            
+                
             #Print the readings (debugging purposes)
             print("")
             
-            # Check if the total reading angle is over
-            if sv03_value >= end_angle:
-                motor_stop()
+            # Check if the total reading duration is over
+            if current_time - start_time >= reading_duration:
                 led.off()
                 break
         
@@ -212,7 +147,6 @@ def send_file_in_chunks(filename, url):
     # Delete the data from the pico if the server received it succesfully
     if response.text == 'JSON file received successfully':
         clear_file('sensor_readings.json')
-        return_to_start()
     print(response.text)
     response.close()
 
@@ -237,11 +171,6 @@ with open(filename, 'a') as file:
 while True:
     if connect_to_wifi():
         break
-
-capture_start_angle()
-motor_forward()
-capture_end_angle()
-return_to_start()
 
 # Check for the START signal from the server. If present, read and send data
 while True:
